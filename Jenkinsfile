@@ -3,13 +3,13 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-login')
-        IMAGE_NAME = "niteshng/ci-cd-demo"  // change if your Docker Hub repo name is different
+        IMAGE_NAME = "niteshng/ci-cd-demo"
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/Nitesh-nitesh/ci-cd-demo.git'
+                git branch: 'main', credentialsId: 'github-credentials', url: 'https://github.com/Nitesh-ng/ci-cd-demo.git'
             }
         }
 
