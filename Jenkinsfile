@@ -1,22 +1,39 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-login')
+        IMAGE_NAME = "niteshng/ci-cd-demo"  // change if your Docker Hub repo name differs
+    }
+
     stages {
-        stage('Build') {
+        stage('Clone Repository') {
             steps {
-                echo 'Building the project...'
+                git branch: 'main', url: 'https://github.com/Nitesh-ng/ci-cd-demo.git'
             }
         }
 
-        stage('Test') {
+        stage('Build Docker Image') {
             steps {
-                echo 'Running tests...'
+                sh 'docker build -t $IMAGE_NAME .'
             }
         }
 
-        stage('Deploy') {
+        stage('Push to Docker Hub') {
             steps {
-                echo 'Deploying application...'
+                sh '''
+                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    docker push $IMAGE_NAME
+                '''
+            }
+        }
+
+        stage('Deploy Container') {
+            steps {
+                sh '''
+                    docker rm -f ci-cd-demo || true
+                    docker run -d -p 5000:5000 --name ci-cd-demo $IMAGE_NAME
+                '''
             }
         }
     }
