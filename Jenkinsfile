@@ -3,39 +3,48 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-login')
-        IMAGE_NAME = "niteshng/ci-cd-demo"
+        IMAGE_NAME = 'nitesh181/ci-cd-demo'
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main', credentialsId: 'github-credentials', url: 'https://github.com/Nitesh-ng/ci-cd-demo.git'
+                git branch: 'main', url: 'https://github.com/Nitesh-ng/ci-cd-demo.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME .'
+                script {
+                    sh 'docker build -t ${IMAGE_NAME} .'
+                }
+            }
+        }
+
+        stage('Login to Docker Hub') {
+            steps {
+                script {
+                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                }
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                sh '''
-                    echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin
-                    docker tag $IMAGE_NAME:latest $IMAGE_NAME:latest
-                    docker push $IMAGE_NAME:latest
-                '''
+                script {
+                    sh 'docker push ${IMAGE_NAME}'
+                }
             }
         }
 
         stage('Deploy Container') {
             steps {
-                sh '''
-                    docker stop ci-cd-demo || true
-                    docker rm ci-cd-demo || true
-                    docker run -d --name ci-cd-demo -p 9090:8080 $IMAGE_NAME:latest
-                '''
+                script {
+                    // Stop and remove old container if running
+                    sh 'docker rm -f ci-cd-demo || true'
+                    // Run new container
+                    sh 'docker run -d --name ci-cd-demo -p 3000:3000 ${IMAGE_NAME}'
+                }
             }
         }
     }
