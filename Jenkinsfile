@@ -2,13 +2,15 @@ pipeline {
     agent any
 
     environment {
+        // DockerHub credentials (use the same ID created in Jenkins)
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-login')
-        IMAGE_NAME = 'nitesh181/ci-cd-demo'
+        DOCKER_IMAGE = "nitesh181/ci-cd-demo"
     }
 
     stages {
         stage('Clone Repository') {
             steps {
+                echo 'Cloning repository from GitHub...'
                 git branch: 'main', url: 'https://github.com/Nitesh-ng/ci-cd-demo.git'
             }
         }
@@ -16,15 +18,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t ${IMAGE_NAME} .'
-                }
-            }
-        }
-
-        stage('Login to Docker Hub') {
-            steps {
-                script {
-                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                    echo 'Building Docker image...'
+                    sh 'docker build -t $DOCKER_IMAGE .'
                 }
             }
         }
@@ -32,20 +27,33 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 script {
-                    sh 'docker push ${IMAGE_NAME}'
+                    echo 'Pushing Docker image to DockerHub...'
+                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
+                    sh 'docker push $DOCKER_IMAGE'
                 }
             }
         }
 
-        stage('Deploy Container') {
+        stage('Deploy') {
             steps {
                 script {
-                    // Stop and remove old container if running
-                    sh 'docker rm -f ci-cd-demo || true'
-                    // Run new container
-                    sh 'docker run -d --name ci-cd-demo -p 3000:3000 ${IMAGE_NAME}'
+                    echo 'Deploying container on port 8081...'
+                    // stop & remove existing container (if any), then start a new one
+                    sh '''
+                        docker rm -f ci-cd-app || true
+                        docker run -d -p 8081:80 --name ci-cd-app $DOCKER_IMAGE
+                    '''
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ CI/CD pipeline completed successfully!'
+        }
+        failure {
+            echo '❌ Pipeline failed! Check logs for errors.'
         }
     }
 }
