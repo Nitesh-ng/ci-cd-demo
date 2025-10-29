@@ -44,7 +44,7 @@ pipeline {
                     sh '''
                         docker stop $CONTAINER_NAME || true
                         docker rm -f $CONTAINER_NAME || true
-                        docker run -d -p ${APP_PORT}:80 --name $CONTAINER_NAME $DOCKER_IMAGE
+                        docker run -d -p ${APP_PORT}:5000 --name $CONTAINER_NAME $DOCKER_IMAGE
                     '''
                 }
             }
@@ -52,15 +52,15 @@ pipeline {
     }
 
     post {
+        always {
+            echo 'Cleaning up temporary Docker resources if any...'
+        }
         success {
             echo 'CI/CD Pipeline executed successfully!'
             echo "Access your app at: http://localhost:${APP_PORT}"
         }
         failure {
             echo 'Pipeline failed! Please check the Jenkins console output for details.'
-        }
-        always {
-            echo 'Cleaning up temporary Docker resources if any...'
         }
     }
 }
