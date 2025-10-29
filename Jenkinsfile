@@ -2,9 +2,10 @@ pipeline {
     agent any
 
     environment {
-        // DockerHub credentials (use the same ID created in Jenkins)
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-login')
         DOCKER_IMAGE = "nitesh181/ci-cd-demo"
+        CONTAINER_NAME = "ci-cd-app"
+        APP_PORT = "8081"
     }
 
     stages {
@@ -27,21 +28,23 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 script {
-                    echo 'Pushing Docker image to DockerHub...'
-                    sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-                    sh 'docker push $DOCKER_IMAGE'
+                    echo 'Pushing Docker image to Docker Hub...'
+                    sh '''
+                        echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                        docker push $DOCKER_IMAGE
+                    '''
                 }
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy Application') {
             steps {
                 script {
-                    echo 'Deploying container on port 8081...'
-                    // stop & remove existing container (if any), then start a new one
+                    echo "Deploying container '$CONTAINER_NAME' on port $APP_PORT..."
                     sh '''
-                        docker rm -f ci-cd-app || true
-                        docker run -d -p 8081:80 --name ci-cd-app $DOCKER_IMAGE
+                        docker stop $CONTAINER_NAME || true
+                        docker rm -f $CONTAINER_NAME || true
+                        docker run -d -p ${APP_PORT}:80 --name $CONTAINER_NAME $DOCKER_IMAGE
                     '''
                 }
             }
@@ -50,10 +53,14 @@ pipeline {
 
     post {
         success {
-            echo '✅ CI/CD pipeline completed successfully!'
+            echo 'CI/CD Pipeline executed successfully!'
+            echo "Access your app at: http://localhost:${APP_PORT}"
         }
         failure {
-            echo '❌ Pipeline failed! Check logs for errors.'
+            echo 'Pipeline failed! Please check the Jenkins console output for details.'
+        }
+        always {
+            echo 'Cleaning up temporary Docker resources if any...'
         }
     }
 }
